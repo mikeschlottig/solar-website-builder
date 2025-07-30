@@ -1,0 +1,21 @@
+{
+  "name": "solar-website-builder",
+  "description": "Full-stack CMS with React frontend and Python FastAPI backend",
+  "image": "railway/dockerfile",
+  "deploy": {
+    "type": "dockerfile",
+    "dockerfile": "railway.Dockerfile"
+  },
+  "env": {
+    "ENV": "deployment",
+    "PORT": "8000",
+    "WORKERS": "4",
+    "LOG_LEVEL": "warning",
+    "PUBLIC_DOMAIN": "${{RAILWAY_PUBLIC_DOMAIN}}",
+    "JWT_SECRET": "${{JWT_SECRET}}"
+  },
+  "healthcheck": {
+    "path": "/",
+    "timeout": 30
+  }
+}
