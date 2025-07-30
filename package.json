@@ -1,0 +1,27 @@
+{
+  "name": "solar-website-builder",
+  "version": "1.0.0",
+  "description": "Full-stack drag-and-drop CMS with React frontend and Python FastAPI backend",
+  "private": true,
+  "scripts": {
+    "dev": "./scripts/start-dev.sh",
+    "setup": "./scripts/dev-setup.sh",
+    "frontend": "cd app && npm run dev",
+    "backend": "cd services && source venv/bin/activate && python main.py",
+    "build": "cd app && npm run build",
+    "test": "cd app && npm test",
+    "docker:up": "docker-compose -f docker-compose.dev.yml up -d",
+    "docker:down": "docker-compose -f docker-compose.dev.yml down",
+    "docker:logs": "docker-compose -f docker-compose.dev.yml logs -f"
+  },
+  "workspaces": [
+    "app"
+  ],
+  "keywords": ["cms", "website-builder", "react", "fastapi", "drag-and-drop"],
+  "author": "LEVERAGEAI LLC",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.11.0"
+  }
+}

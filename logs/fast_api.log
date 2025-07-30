@@ -1,0 +1,72 @@
+
+============================================================
+Bootstrap error at 2025-07-30T07:22:20.901351
+ModuleNotFoundError: No module named 'psycopg'
+Traceback (most recent call last):
+  File "/home/mikes/solar-website-builder/services/api/bootstrap.py", line 28, in <module>
+    from api.routes import app
+  File "/home/mikes/solar-website-builder/services/api/routes.py", line 41, in <module>
+    from solar.access import User
+  File "/home/mikes/solar-website-builder/services/solar/__init__.py", line 1, in <module>
+    from .table import Table, ColumnDetails
+  File "/home/mikes/solar-website-builder/services/solar/table.py", line 16, in <module>
+    from psycopg.rows import dict_row
+ModuleNotFoundError: No module named 'psycopg'
+
+============================================================
+Bootstrap error at 2025-07-30T07:24:36.966862
+ImportError: no pq wrapper available.
+Attempts made:
+- couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+- couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+- couldn't import psycopg 'python' implementation: libpq library not found
+Traceback (most recent call last):
+  File "/home/mikes/solar-website-builder/services/api/bootstrap.py", line 28, in <module>
+    from api.routes import app
+  File "/home/mikes/solar-website-builder/services/api/routes.py", line 41, in <module>
+    from solar.access import User
+  File "/home/mikes/solar-website-builder/services/solar/__init__.py", line 1, in <module>
+    from .table import Table, ColumnDetails
+  File "/home/mikes/solar-website-builder/services/solar/table.py", line 16, in <module>
+    from psycopg.rows import dict_row
+  File "/home/mikes/.local/lib/python3.12/site-packages/psycopg/__init__.py", line 9, in <module>
+    from . import pq  # noqa: F401 import early to stabilize side effects
+    ^^^^^^^^^^^^^^^^
+  File "/home/mikes/.local/lib/python3.12/site-packages/psycopg/pq/__init__.py", line 116, in <module>
+    import_from_libpq()
+  File "/home/mikes/.local/lib/python3.12/site-packages/psycopg/pq/__init__.py", line 108, in import_from_libpq
+    raise ImportError(
+ImportError: no pq wrapper available.
+Attempts made:
+- couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+- couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+- couldn't import psycopg 'python' implementation: libpq library not found
+
+============================================================
+Bootstrap error at 2025-07-30T07:33:22.733641
+ImportError: no pq wrapper available.
+Attempts made:
+- couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+- couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+- couldn't import psycopg 'python' implementation: libpq library not found
+Traceback (most recent call last):
+  File "/home/mikes/solar-website-builder/services/api/bootstrap.py", line 28, in <module>
+    from api.routes import app
+  File "/home/mikes/solar-website-builder/services/api/routes.py", line 41, in <module>
+    from solar.access import User
+  File "/home/mikes/solar-website-builder/services/solar/__init__.py", line 1, in <module>
+    from .table import Table, ColumnDetails
+  File "/home/mikes/solar-website-builder/services/solar/table.py", line 16, in <module>
+    from psycopg.rows import dict_row
+  File "/home/mikes/.local/lib/python3.12/site-packages/psycopg/__init__.py", line 9, in <module>
+    from . import pq  # noqa: F401 import early to stabilize side effects
+    ^^^^^^^^^^^^^^^^
+  File "/home/mikes/.local/lib/python3.12/site-packages/psycopg/pq/__init__.py", line 116, in <module>
+    import_from_libpq()
+  File "/home/mikes/.local/lib/python3.12/site-packages/psycopg/pq/__init__.py", line 108, in import_from_libpq
+    raise ImportError(
+ImportError: no pq wrapper available.
+Attempts made:
+- couldn't import psycopg 'c' implementation: No module named 'psycopg_c'
+- couldn't import psycopg 'binary' implementation: No module named 'psycopg_binary'
+- couldn't import psycopg 'python' implementation: libpq library not found
