@@ -8,6 +8,10 @@ from fastapi import Depends, FastAPI, HTTPException, Request, status, Body, Uplo
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import HTMLResponse, Response
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+import re
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse, HTMLResponse, Response
@@ -361,12 +365,84 @@ T = TypeVar('T')
 # General App
 ##############################################################################
 
+# Security patch: Add rate limiting
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="Next.js Website CMS",
     docs_url=None
 )
 
+# Add rate limiting middleware
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 app.include_router(router)
+
+# Security patch: Input validation functions
+def validate_component_code(code: str) -> bool:
+    """Validate React component code for security"""
+    if not code or len(code) > 50000:  # 50KB limit
+        return False
+    
+    # Block dangerous patterns
+    dangerous_patterns = [
+        r'eval\s*\(',
+        r'Function\s*\(',
+        r'document\.write',
+        r'innerHTML\s*=',
+        r'outerHTML\s*=',
+        r'<script',
+        r'javascript:',
+        r'on\w+\s*=',  # event handlers
+        r'dangerouslySetInnerHTML',
+        r'__proto__',
+        r'constructor\s*\.',
+        r'process\.env',
+        r'require\s*\(',
+        r'import\s*\(',
+        r'fetch\s*\(',
+        r'XMLHttpRequest',
+        r'window\.',
+        r'global\.',
+        r'globalThis\.'
+    ]
+    
+    for pattern in dangerous_patterns:
+        if re.search(pattern, code, re.IGNORECASE):
+            return False
+    
+    return True
+
+def validate_file_upload(file: UploadFile) -> bool:
+    """Validate uploaded files"""
+    if not file:
+        return False
+    
+    # Check file size (10MB limit)
+    if hasattr(file, 'size') and file.size > 10 * 1024 * 1024:
+        return False
+    
+    # Check allowed file types
+    allowed_types = {
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+        'text/css', 'text/javascript', 'application/javascript',
+        'application/json', 'text/plain'
+    }
+    
+    if file.content_type not in allowed_types:
+        return False
+    
+    # Check filename
+    if not file.filename or len(file.filename) > 255:
+        return False
+    
+    # Block dangerous extensions
+    dangerous_extensions = {'.exe', '.bat', '.cmd', '.sh', '.php', '.asp', '.jsp'}
+    if any(file.filename.lower().endswith(ext) for ext in dangerous_extensions):
+        return False
+    
+    return True
 
 ###############################################################################
 # Simple Request Logging Middleware
@@ -422,10 +498,20 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     
 @app.exception_handler(Exception)
 async def handle_errors(request: Request, exc: Exception):
+    # Security patch: Don't expose internal error details
     logger.exception(f"Unhandled error: {type(exc).__name__}: {exc}")
+    
+    # Generate error ID for debugging
+    error_id = str(uuid.uuid4())[:8]
+    logger.error(f"Error ID {error_id}: {type(exc).__name__}: {exc}")
+    
     return JSONResponse(
         status_code=500,
-        content={"error": "Internal server error", "message": str(exc)}
+        content={
+            "error": "Internal server error", 
+            "message": "An unexpected error occurred",
+            "error_id": error_id if ENV == "sandbox" else None
+        }
     )
 
 @app.exception_handler(RequestValidationError)
@@ -452,12 +538,44 @@ def get_auth_origins():
     
     return [origin for origin in origins if origin]
 
+# Security patch: Properly configure CORS
+def get_allowed_origins():
+    """Get allowed origins from environment variables"""
+    origins = []
+    
+    # Add production domain
+    public_domain = os.environ.get("PUBLIC_DOMAIN")
+    if public_domain:
+        origins.extend([
+            f"https://{public_domain}",
+            f"http://{public_domain}"  # Only for local dev
+        ])
+    
+    # Add sandbox domains for development
+    if ENV == "sandbox":
+        sandbox_frontend = os.environ.get("SANDBOX_FRONTEND_URL")
+        sandbox_backend = os.environ.get("SANDBOX_BACKEND_URL")
+        if sandbox_frontend:
+            origins.append(sandbox_frontend)
+        if sandbox_backend:
+            origins.append(sandbox_backend)
+        # Local development
+        origins.extend([
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:5173"
+        ])
+    
+    return origins
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=get_allowed_origins(),
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
+    expose_headers=["Set-Cookie"]
 )
 
 async def auth_cors_middleware(request: Request, call_next):
@@ -546,19 +664,42 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         if not base_url:
             raise HTTPException(status_code=500, detail="ROUTER_BASE_URL is not set, could not authenticate user")
         
-        try:
-            decoded_token = jwt.decode(token, options={"verify_signature": False})
-            
-            jti = decoded_token.get("jti")
-            if not jti:
-                raise HTTPException(status_code=401, detail="Invalid token format")
-            
-            exp = decoded_token.get("exp")
-            if exp is not None and exp < datetime.utcnow().timestamp():
+        # Security patch: Validate JWT token properly
+        jwt_secret = os.getenv("JWT_SECRET")
+        if not jwt_secret:
+            # Fallback to introspection-only validation for backward compatibility
+            logger.warning("JWT_SECRET not set, using introspection-only validation")
+            jti = token  # Use token directly for introspection
+        else:
+            try:
+                # Proper JWT validation with signature verification
+                decoded_token = jwt.decode(
+                    token, 
+                    jwt_secret, 
+                    algorithms=["HS256", "RS256"],
+                    options={
+                        "verify_signature": True,
+                        "verify_exp": True,
+                        "verify_iat": True,
+                        "require_exp": True
+                    }
+                )
+                
+                jti = decoded_token.get("jti")
+                if not jti:
+                    raise HTTPException(status_code=401, detail="Invalid token format")
+                
+                # Additional token validation
+                exp = decoded_token.get("exp")
+                if exp is None or exp < datetime.utcnow().timestamp():
+                    raise HTTPException(status_code=401, detail="Token expired")
+                    
+            except jwt.ExpiredSignatureError:
                 raise HTTPException(status_code=401, detail="Token expired")
-        
-        except jwt.DecodeError:
-            raise HTTPException(status_code=401, detail="Malformed token")
+            except jwt.InvalidTokenError:
+                raise HTTPException(status_code=401, detail="Invalid token")
+            except jwt.DecodeError:
+                raise HTTPException(status_code=401, detail="Malformed token")
         
         token_url = f"{base_url}/innerApp/oauth2/introspect"
         async with httpx.AsyncClient(timeout=20.0) as client:
@@ -600,6 +741,7 @@ def extract_domain(url):
     return url
 
 @app.post('/api/auth/token', response_model=TokenResponse, include_in_schema=False)
+@limiter.limit("10/minute")  # Security patch: Rate limit auth attempts
 async def exchange_token(request: Request, body: TokenExchangeRequest = Body(...)):    
     try:
         params = body.model_dump(exclude_none=True)

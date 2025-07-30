@@ -1,0 +1,9 @@
+name = "solar-website-builder"
+compatibility_date = "2024-07-30"
+pages_build_output_dir = "dist"
+
+[env.production]
+vars = { 
+  NODE_ENV = "production",
+  VITE_API_URL = "https://solar-api.ceo-a53.workers.dev"
+}

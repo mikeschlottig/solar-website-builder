@@ -6,11 +6,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - &&     apt-get ins
 
 WORKDIR /deployment/app
 
-COPY app/package.json app/pnpm-lock.yaml ./
-RUN pnpm install
+COPY app/package.json ./
+RUN npm install --legacy-peer-deps
 
 COPY app/ ./
-RUN pnpm build
+RUN npm run build
 
 FROM python:3.10-slim
 RUN apt-get update && apt-get install -y --no-install-recommends     curl     ca-certificates     libpq5     nginx     && apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -24,7 +24,7 @@ RUN mkdir -p /deployment/app /deployment/services
 
 COPY --from=frontend-builder /deployment/app/dist /deployment/app/dist
 COPY services /deployment/services
-RUN cd /deployment/services && uv add pydantic httpx httpcore h11 pyjwt python-dotenv fastapi uvicorn requests beautifulsoup4 psycopg-pool psycopg boto3 python-multipart loguru
+RUN cd /deployment/services && uv add pydantic httpx httpcore h11 pyjwt python-dotenv fastapi uvicorn requests beautifulsoup4 psycopg-pool psycopg boto3 python-multipart loguru slowapi
 
 # Create main nginx.conf with prerender maps
 RUN echo "user www-data;\n\

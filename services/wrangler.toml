@@ -1,0 +1,21 @@
+name = "solar-api"
+compatibility_date = "2024-07-30"
+compatibility_flags = ["python_workers"]
+
+[vars]
+ENV = "deployment"
+PORT = "8000"
+WORKERS = "4"
+LOG_LEVEL = "warning"
+
+[env.production]
+vars = { 
+  ENV = "deployment",
+  PUBLIC_DOMAIN = "solar-api.ceo-a53.workers.dev",
+  PORT = "8000",
+  WORKERS = "4",
+  LOG_LEVEL = "warning"
+}
+
+# Add secrets via: wrangler secret put JWT_SECRET
+# wrangler secret put ROUTER_BASE_URL
